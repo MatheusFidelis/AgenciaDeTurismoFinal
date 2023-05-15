@@ -16,7 +16,7 @@ class TelaReserva(TelaAbstrata):
         print("Ida: ", dados["ida"])
         print("Volta: ",dados["volta"])
         print("Data da Reserva: ",dados["data_reserva"])
-        print("Número de Vagas Restante: ",dados["qtd_vagas"])
+        print("Número de Vagas Permitido: ",dados["qtd_vagas"])
         print("Número de Vagas Preenchidas: ",dados["n_pessoas"])
         print("Preço Unitario: ",dados["preco_unitario"])
         print("Total: ",dados["valor_final"])
