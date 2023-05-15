@@ -9,7 +9,10 @@ class ControladorViagem(ControladorAbstrato):
     def __init__(self):
         self.__viagens = []
         self.__tela = TelaViagem()
-         
+        
+    
+    
+    
     def inicia(self):
         opcoes = {"1": self.cadastro, "2": self.alterar, "3": self.remover, "4": self.listar}
         while True:
