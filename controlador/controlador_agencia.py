@@ -1,7 +1,5 @@
 from datetime import datetime
-from entidade.agencia import Agencia
 from entidade.reserva import Reserva
-from entidade.cliente import Cliente
 from entidade.viagem_internacional import ViagemInternacional
 from entidade.viagem_nacional import ViagemNacional
 from entidade.funcionario import Funcionario
@@ -33,8 +31,6 @@ class ControladorAgencia(ControladorAbstrato):
                 opcoes[opcao].inicia()
             else:
                 self.__tela.mensagem_erro("Comando Inválido")
-
-
     
     @property
     def controlador_cliente(self):
@@ -88,15 +84,11 @@ class ControladorAgencia(ControladorAbstrato):
     
     def listar_viagens_disp(self):
         viagens_disp = []
+        codigos_reservas = [reserva.codigo for reserva in self.__reservas]  # Obter os códigos de todas as reservas
+
         for viagem in self.__controlador_viagem.viagens:
             codigo_viagem = viagem.codigo
-            reserva_existente = False
-            for reserva in self.__reservas:
-                codigo_reserva = reserva["codigo"]
-                if codigo_viagem == codigo_reserva:
-                    reserva_existente = True
-                    break
-            if not reserva_existente:
+            if codigo_viagem not in codigos_reservas:  # Verificar se o código da viagem não está na lista de códigos de reservas
                 viagens_disp.append(viagem)
 
         for viagem in viagens_disp:
@@ -104,6 +96,7 @@ class ControladorAgencia(ControladorAbstrato):
                 self.__controlador_viagem._ControladorViagem__tela.mostrar_internacional(self.__controlador_viagem.dados_viagem_internacional(viagem))
             elif isinstance(viagem, ViagemNacional):
                 self.__controlador_viagem._ControladorViagem__tela.mostrar_nacional(self.__controlador_viagem.dados_viagem_nacional(viagem))
+
     
                     
     def seleciona_reserva(self):
@@ -116,6 +109,11 @@ class ControladorAgencia(ControladorAbstrato):
         dados_reserva = self.__tela_reserva.dados_reserva()
 
         codigo = dados_reserva["codigo"]
+        # Verificar se já existe uma reserva com o mesmo código
+        if any(reserva.codigo == codigo for reserva in self.__reservas):
+            self.__tela_reserva.mensagem_erro("Já existe uma reserva com esse código.")
+            return
+
         viagem = self.__controlador_viagem.seleciona_externo(codigo)
         if not viagem:
             self.__tela_reserva.mensagem_erro("Viagem não encontrada.")
@@ -138,7 +136,7 @@ class ControladorAgencia(ControladorAbstrato):
         n_pessoas = int(dados_reserva["n_pessoas"]) 
         preco_unitario = viagem.preco
         tipo = viagem.tipo
-        visto = viagem.visto
+        visto = viagem.visto if tipo == "INTERNACIONAL" else None
         valor_final = preco_unitario * n_pessoas
         
         if n_pessoas > qtd_vagas:
@@ -163,9 +161,7 @@ class ControladorAgencia(ControladorAbstrato):
     def dados_reserva(self,reserva):
         dados = {"codigo": reserva.codigo, "cliente": reserva.cliente,"nome_cliente": reserva.nome_cliente, "viagem": reserva.viagem,"pais":reserva.pais, "origem":reserva.origem, "destino":reserva.destino ,"descricao":reserva.descricao, "ida":reserva.ida, "volta":reserva.volta,"data_reserva": reserva.data_reserva, "qtd_vagas":reserva.qtd_vagas,"n_pessoas": reserva.n_pessoas,"preco_unitario":reserva.preco_unitario,"tipo":reserva.tipo,"visto":reserva.visto,"valor_final": reserva.valor_final }
         return dados
-        
     
-
     
     def agencia_funcionario(self):
         funcionario = self.__controlador_funcionario.seleciona_funcionario()
@@ -187,9 +183,11 @@ class ControladorAgencia(ControladorAbstrato):
                     self.__tela_agencia.mensagem_erro("Comando Inválido")
         else:
             self.__tela_agencia.mensagem_erro("Acesso negado")
+            self.acessar()
             
     def total_vendas(self):
         total = 0
         for reserva in self.__reservas:
             total += reserva.valor_final
-        return total
+        self.__tela_agencia.total_vendas(total)
+        self.acessar()
