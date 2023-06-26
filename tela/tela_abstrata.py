@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-
+import PySimpleGUI as sg
 
 class TelaAbstrata(ABC):
     @abstractmethod
@@ -18,9 +18,10 @@ class TelaAbstrata(ABC):
                 print(self.mensagem_erro("Valor numérico incorreto"))
                 if inteiros_validos:
                     print("Valores validos:", inteiros_validos)'''
-
+        
+    
     def mensagem(self, msg):
-        print(f"----- {msg} -----")
-
+        sg.popup(f"----- {msg} -----")
+    
     def mensagem_erro(self, msg):
-        print(f"### {msg} ###")
+        sg.popup(f"### {msg} ###")
