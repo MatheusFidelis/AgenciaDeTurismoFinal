@@ -2,38 +2,55 @@ from controlador.controlador_abstrato import ControladorAbstrato
 from entidade.viagem_internacional import ViagemInternacional
 from entidade.viagem_nacional import ViagemNacional
 from tela.tela_viagem import TelaViagem
+from persistencia.viagem_dao import ViagemDAO
 from datetime import datetime
 import re
 
 class ControladorViagem(ControladorAbstrato):
+    __instance = None
     def __init__(self):
-        self.__viagens = []
+        self.__dao = ViagemDAO()
         self.__tela = TelaViagem()
         
+    def __new__(cls):
+        if ControladorViagem.__instance is None:
+            ControladorViagem.__instance = object.__new__(cls)
+        return ControladorViagem.__instance
     
+    @property
+    def dao(self):
+        return self.__dao
     
+    @property
+    def tela(self):
+        return self.__tela
     
     def inicia(self):
-        opcoes = {"1": self.cadastro, "2": self.alterar, "3": self.remover, "4": self.listar}
         while True:
             opcao = self.__tela.opcoes()
-            if opcao == "0":
+            if opcao == 0:
                 break
-            try:
-                if opcao in opcoes.keys():
-                    opcoes[opcao]()
-            except:
-                self.__tela.mensagem_erro("Comando Inválido")
+            elif opcao == 1:
+                self.cadastro()
+            elif opcao == 2:
+                self.alterar()
+            elif opcao == 3:
+                self.remover()
+            elif opcao == 4:
+                self.listar()
+    
+    def encerra_sistema(self):
+        exit(1)
     
     def cadastro(self):
         while True:
             tipo = self.__tela.tipo_da_viagem()
-            if tipo == "0":
+            if tipo == 0:
                 break
             try:
-                if tipo == "1":
+                if tipo == 1:
                     return self.cadastro_nacional()
-                elif tipo == "2":
+                elif tipo == 2:
                     return self.cadastro_internacional()
                 else:
                     return ValueError
@@ -41,7 +58,6 @@ class ControladorViagem(ControladorAbstrato):
                 self.__tela.mensagem_erro("Comando Inválido")
 
 
-    
     def cadastro_nacional(self):
         while True:
             dados = self.__tela.dados_nacional()
@@ -51,14 +67,14 @@ class ControladorViagem(ControladorAbstrato):
             codigo_repetido = False
 
             # Verificar duplicação de código em viagens nacionais
-            for viagem in self.__viagens:
+            for viagem in self.__dao.get_all():
                 if isinstance(viagem, ViagemNacional) and viagem.codigo == codigo:
                     codigo_repetido = True
                     self.__tela.mensagem_erro("Código duplicado na viagem nacional")
                     break
 
             # Verificar duplicação de código em viagens internacionais
-            for viagem in self.__viagens:
+            for viagem in self.__dao.get_all():
                 if isinstance(viagem, ViagemInternacional) and viagem.codigo == codigo:
                     codigo_repetido = True
                     self.__tela.mensagem_erro("Código duplicado na viagem internacional")
@@ -80,7 +96,7 @@ class ControladorViagem(ControladorAbstrato):
             estado_destino = dados["estado_destino"]
             
             viagem = ViagemNacional(codigo, pais_origem, pais_destino, descricao, data_ida, data_volta, preco, qtd_vagas, tipo, estado_origem, estado_destino)
-            self.__viagens.append(viagem)
+            self.__dao.add(viagem)
             self.__tela.mensagem("Cadastro realizado com sucesso")
             break
         
@@ -130,9 +146,7 @@ class ControladorViagem(ControladorAbstrato):
             return False
         return True
     
-
-
-        
+    
     def cadastro_internacional(self):
         while True:
             dados = self.__tela.dados_internacional()
@@ -142,14 +156,14 @@ class ControladorViagem(ControladorAbstrato):
             codigo_repetido = False
 
             # Verificar duplicação de código em viagens internacionais
-            for viagem in self.__viagens:
+            for viagem in self.__dao.get_all():
                 if isinstance(viagem, ViagemInternacional) and viagem.codigo == codigo:
                     codigo_repetido = True
                     self.__tela.mensagem_erro("Código duplicado na viagem internacional")
                     break
 
             # Verificar duplicação de código em viagens nacionais
-            for viagem in self.__viagens:
+            for viagem in self.__dao.get_all():
                 if isinstance(viagem, ViagemNacional) and viagem.codigo == codigo:
                     codigo_repetido = True
                     self.__tela.mensagem_erro("Código duplicado na viagem nacional")
@@ -170,7 +184,7 @@ class ControladorViagem(ControladorAbstrato):
             visto = dados["visto"]
 
             viagem = ViagemInternacional(codigo, pais_origem, pais_destino, descricao, data_ida, data_volta, preco, qtd_vagas, tipo, visto)
-            self.__viagens.append(viagem)
+            self.__dao.add(viagem)
             self.__tela.mensagem("Cadastro realizado com sucesso")
             break
 
@@ -214,10 +228,7 @@ class ControladorViagem(ControladorAbstrato):
             return False
 
         return True
-    
-    
 
-        
 
     def valida_data(self, data):
         while True:
@@ -253,23 +264,32 @@ class ControladorViagem(ControladorAbstrato):
     
     def seleciona(self):
         codigo = self.__tela.seleciona_viagem()
-        for viagem in self.__viagens:
+        if codigo is None:
+            self.__tela.mensagem_erro("Viagem não encontrada")
+            return None
+        
+        for viagem in self.__dao.get_all():
             if viagem.codigo == int(codigo):
                 return viagem
+
+                
             
     def seleciona_externo(self,codigo):
-        for viagem in self.__viagens:
+        for viagem in self.__dao.get_all():
             if viagem.codigo == int(codigo):
                 return viagem
             
     def alterar(self):
         while True:
             select = self.seleciona()
+            if select is None:
+                self.encerra_sistema
+                break
             tipo = select.tipo
             try:
-                if tipo == "NACIONAL":
+                if tipo == 'NACIONAL':
                     return self.alterar_nacional(select)
-                elif tipo == "INTERNACIONAL":
+                elif tipo == 'INTERNACIONAL':
                     return self.alterar_internacional(select)
                 else:
                     return ValueError
@@ -278,7 +298,6 @@ class ControladorViagem(ControladorAbstrato):
 
     def alterar_nacional(self,viagem):
         if isinstance (viagem, ViagemNacional):
-            self.__tela.mostrar_nacional(self.dados_viagem_nacional(viagem))
             while True:
                 dados = self.__tela.alterar_nacional()
                 dados["codigo"] = viagem.codigo
@@ -398,52 +417,71 @@ class ControladorViagem(ControladorAbstrato):
     def remover(self):
         while True:
             select = self.seleciona()
+            if select is None:
+                break
+            
             tipo = select.tipo
             try:
                 if tipo == "NACIONAL":
-                    return self.remove_nacional(select)
+                    self.remove_nacional(select)
                 elif tipo == "INTERNACIONAL":
-                    return self.remove_internacional(select)
+                    self.remove_internacional(select)
                 else:
-                    return ValueError
+                    raise ValueError
             except ValueError:
-                self.__tela.mensagem_erro("Viagem nao encontrada")
+                self.__tela.mensagem_erro("Viagem não encontrada")
     
-    def remove_nacional(self,viagem):
+    def remove_nacional(self, viagem):
         if isinstance(viagem, ViagemNacional):
-            self.__tela.mostrar_nacional(self.dados_viagem_nacional(viagem))
-            confirmar = self.__tela.confirma_exclusao()
-            if confirmar == "0":
-                for i in range(len(self.__viagens)):
-                    if self.__viagens[i] == viagem:
-                        self.__viagens.pop(i)
-                        self.__tela.mensagem("Exclusão realizada com sucesso")
-                        break
+            confirmar = self.__tela.confirma_exclusao(self.dados_viagem_nacional(viagem))
+            if confirmar == "Confirmar":
+                self.__dao.remove(viagem.codigo)
+                self.__tela.mensagem("Exclusão realizada com sucesso")
             else:
                 self.__tela.mensagem("Exclusão cancelada com sucesso")
-    
-    def remove_internacional(self,viagem):
+
+    def remove_internacional(self, viagem):
         if isinstance(viagem, ViagemInternacional):
-            self.__tela.mostrar_internacional(self.dados_viagem_internacional(viagem))
-            confirmar = self.__tela.confirma_exclusao()
-            if confirmar == "0":
-                for i in range(len(self.__viagens)):
-                    if self.__viagens[i] == viagem:
-                        self.__viagens.pop(i)
-                        self.__tela.mensagem("Exclusão realizada com sucesso")
-                        break
+            confirmar = self.__tela.confirma_exclusao(self.dados_viagem_internacional(viagem))
+            if confirmar == "Confirmar":
+                self.__dao.remove(viagem.codigo)
+                self.__tela.mensagem("Exclusão realizada com sucesso")
             else:
                 self.__tela.mensagem("Exclusão cancelada com sucesso")
-        else:
-            self.__tela.mensagem_erro("Cliente não encontrado")
+
+        
     
     def listar(self):
-        for viagem in self.__viagens:
-            if isinstance (viagem, ViagemInternacional):
-                self.__tela.mostrar_internacional(self.dados_viagem_internacional(viagem))
-            elif isinstance (viagem, ViagemNacional):
-                self.__tela.mostrar_nacional(self.dados_viagem_nacional(viagem))
+    
+        dados_viagens = []
 
-    @property
-    def viagens(self):
-        return self.__viagens
+        for viagem in self.__dao.get_all():
+            if isinstance(viagem, ViagemInternacional):
+                dados_viagem = self.dados_viagem_internacional(viagem)
+            elif isinstance(viagem, ViagemNacional):
+                dados_viagem = self.dados_viagem_nacional(viagem)
+
+            if dados_viagem:
+                dados_viagens.append(dados_viagem)
+
+        self.__tela.mostrar_viagens(dados_viagens)
+    
+    
+    def listar_viagens_com_vagas(self):
+        dados_viagens = []
+
+        for viagem in self.__dao.get_all():
+            if viagem.qtd_vagas > 0:
+                if isinstance(viagem, ViagemInternacional):
+                    dados_viagem = self.dados_viagem_internacional(viagem)
+                elif isinstance(viagem, ViagemNacional):
+                    dados_viagem = self.dados_viagem_nacional(viagem)
+
+                if dados_viagem:
+                    dados_viagens.append(dados_viagem)
+
+        self.__tela.mostrar_viagens(dados_viagens)
+
+
+
+    
